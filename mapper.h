@@ -4,6 +4,8 @@
 #include <string>
 #include <utility>
 #include <unordered_map>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
 
 class Mapper {
     public:
@@ -30,7 +32,11 @@ class Mapper {
 
         Node nextNode(const Node &source, const Node &dest);
     private:
-        std::unordered_map<Node, std::unordered_map<Node, Cost> > adjacencyList;
+        boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS,
+            boost::no_property, boost::property<boost::edge_weight_t, Cost> > adjacencyList;
+        typedef boost::graph_traits<decltype(adjacencyList)>::vertex_descriptor VertexDescriptor;
+        std::unordered_map<Node, VertexDescriptor> nodesMapping;
+        std::unordered_map<VertexDescriptor, Node> nodesReverseMapping;
 };
 
 #endif // MAPPER_H

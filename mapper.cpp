@@ -1,82 +1,78 @@
 #include "mapper.h"
-#include <functional>
+#include <iostream>
+#include <vector>
 #include <limits>
-#include <cmath>
-#include <boost/heap/binomial_heap.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
 
 void Mapper::addRoute(const Mapper::Node &node1, const Mapper::Node &node2, Mapper::Cost cost) {
     if (node1 == node2) {
         throw CyclicRouteException();
     }
-    adjacencyList[node1][node2] = cost;
-    adjacencyList[node2][node1] = cost;
+    if (nodesMapping.find(node1) == nodesMapping.end()) {
+        auto vertexDescriptor = add_vertex(adjacencyList);
+        nodesMapping[node1] = vertexDescriptor;
+        nodesReverseMapping[vertexDescriptor] = node1;
+    }
+    if (nodesMapping.find(node2) == nodesMapping.end()) {
+        auto vertexDescriptor = add_vertex(adjacencyList);
+        nodesMapping[node2] = vertexDescriptor;
+        nodesReverseMapping[vertexDescriptor] = node2;
+    }
+
+    add_edge(nodesMapping[node1], nodesMapping[node2], cost, adjacencyList);
 }
 
 void Mapper::removeRoute(const Mapper::Node &node1, const Mapper::Node &node2) {
-    auto node1Iterator = adjacencyList.find(node1);
-    if (node1Iterator == adjacencyList.end()) {
+    if (nodesMapping.find(node1) == nodesMapping.end()) {
         throw NoNodeException();
     }
-    auto node2Iterator = node1Iterator->second.find(node2);
-    if (node2Iterator == node1Iterator->second.end()) {
+    if (nodesMapping.find(node2) == nodesMapping.end()) {
         throw NoNodeException();
     }
-    node1Iterator->second.erase(node2Iterator);
-    if (node1Iterator->second.empty()) {
-        adjacencyList.erase(node1Iterator);
-    }
+    remove_edge(nodesMapping[node1], nodesMapping[node2], adjacencyList);
 
-    node1Iterator = adjacencyList.find(node2);
-    node2Iterator = node1Iterator->second.find(node1);
-    node1Iterator->second.erase(node2Iterator);
-    if (node1Iterator->second.empty()) {
-        adjacencyList.erase(node1Iterator);
+    boost::graph_traits<decltype(adjacencyList)>::adjacency_iterator vi, viEnd;
+    boost::tie(vi, viEnd) = adjacent_vertices(nodesMapping[node1], adjacencyList);
+    if (vi == viEnd) {
+        remove_vertex(nodesMapping[node1], adjacencyList);
+        nodesReverseMapping.erase(nodesReverseMapping.find(nodesMapping[node1]));
+        nodesMapping.erase(nodesMapping.find(node1));
+    }
+    boost::tie(vi, viEnd) = adjacent_vertices(nodesMapping[node2], adjacencyList);
+    if (vi == viEnd) {
+        remove_vertex(nodesMapping[node2], adjacencyList);
+        nodesReverseMapping.erase(nodesReverseMapping.find(nodesMapping[node2]));
+        nodesMapping.erase(nodesMapping.find(node2));
     }
 }
 
 Mapper::Node Mapper::nextNode(const Mapper::Node &source, const Mapper::Node &dest) {
-    if (source == dest) {
-        return dest;
+    if (nodesMapping.find(source) == nodesMapping.end()) {
+        throw NoNodeException();
+    }
+    if (nodesMapping.find(dest) == nodesMapping.end()) {
+        throw NoNodeException();
     }
 
-    typedef std::pair<Cost, Node> WaitingPair;
-    boost::heap::binomial_heap<WaitingPair,
-        boost::heap::compare<std::greater<WaitingPair> > > waitingHeap;
-    std::unordered_map<Node, decltype(waitingHeap)::handle_type> waitingHandles;
-    std::unordered_map<Node, Cost> costs;
-    std::unordered_map<Node, Node> prev;
+    std::vector<VertexDescriptor> p(num_vertices(adjacencyList));
+    std::vector<int> d(num_vertices(adjacencyList));
+    VertexDescriptor sourceNode = nodesMapping[source];
 
-    costs[source] = 0.0;
-    for (auto i: adjacencyList) {
-        if (i.first != source) {
-            costs[i.first] = std::numeric_limits<Cost>::infinity();
+    dijkstra_shortest_paths(adjacencyList, sourceNode,
+            predecessor_map(boost::make_iterator_property_map(p.begin(),
+                    get(boost::vertex_index, adjacencyList))).
+            distance_map(boost::make_iterator_property_map(d.begin(),
+                    get(boost::vertex_index, adjacencyList))));
+
+    VertexDescriptor currentNode = nodesMapping[dest];
+    while (p[currentNode] != sourceNode) {
+        if (currentNode == p[currentNode]) {
+            throw NoRouteException();
         }
-        waitingHandles[i.first] = waitingHeap.push(WaitingPair(costs[i.first], i.first));
+        currentNode = p[currentNode];
     }
-
-    while (!waitingHeap.empty()) {
-        auto node = waitingHeap.top().second;
-        waitingHeap.pop();
-        waitingHandles.erase(waitingHandles.find(node));
-
-        for (auto i: adjacencyList[node]) {
-            if (waitingHandles.find(i.first) == waitingHandles.end()) {
-                continue;
-            }
-            auto alt = costs[node] + i.second;
-            if (alt < costs[i.first]) {
-                costs[i.first] = alt;
-                prev[i.first] = node;
-                waitingHeap.update(waitingHandles[i.first], WaitingPair(alt, i.first));
-            }
-        }
-    }
-    if (std::isinf(costs[dest])) {
-        throw NoRouteException();
-    }
-    auto current = dest;
-    while (prev[current] != source) {
-        current = prev[current];
-    }
-    return current;
+    return nodesReverseMapping[currentNode];
 }
