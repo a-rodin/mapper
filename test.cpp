@@ -102,10 +102,16 @@ TEST(MapperTest, RemoveRouteKeepDisconnected) {
 TEST(MapperTest, RemoveRouteWithNodes) {
     Mapper mapper;
     mapper.addRoute("alice", "bob", 5.0);
+    mapper.addRoute("charlie", "david", 3.0);
+    mapper.addRoute("elizabeth", "fred", 2.0);
     mapper.removeRoute("alice", "bob");
 
     ASSERT_THROW(mapper.nextNode("alice", "alice"), decltype(mapper)::NoNodeException);
     ASSERT_THROW(mapper.nextNode("bob", "bob"), decltype(mapper)::NoNodeException);
+    ASSERT_EQ(mapper.nextNode("charlie", "charlie"), "charlie");
+    ASSERT_EQ(mapper.nextNode("david", "david"), "david");
+    ASSERT_EQ(mapper.nextNode("charlie", "david"), "david");
+    ASSERT_EQ(mapper.nextNode("elizabeth", "fred"), "fred");
 }
 
 TEST(MapperTest, RemoveRouteNoFirstNode) {

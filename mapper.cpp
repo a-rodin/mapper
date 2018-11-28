@@ -1,5 +1,4 @@
 #include "mapper.h"
-#include <vector>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -11,12 +10,12 @@ void Mapper::addRoute(const Mapper::Node &node1, const Mapper::Node &node2, Mapp
     if (nodesMapping.find(node1) == nodesMapping.end()) {
         auto vertexDescriptor = add_vertex(adjacencyList);
         nodesMapping[node1] = vertexDescriptor;
-        nodesReverseMapping[vertexDescriptor] = node1;
+        nodesReverseMapping.push_back(node1);
     }
     if (nodesMapping.find(node2) == nodesMapping.end()) {
         auto vertexDescriptor = add_vertex(adjacencyList);
         nodesMapping[node2] = vertexDescriptor;
-        nodesReverseMapping[vertexDescriptor] = node2;
+        nodesReverseMapping.push_back(node2);
     }
 
     if (boost::edge(nodesMapping[node1], nodesMapping[node2], adjacencyList).second) {
@@ -33,21 +32,34 @@ void Mapper::removeRoute(const Mapper::Node &node1, const Mapper::Node &node2) {
     if (nodesMapping.find(node2) == nodesMapping.end()) {
         throw NoNodeException();
     }
-    remove_edge(nodesMapping[node1], nodesMapping[node2], adjacencyList);
+    auto e = boost::edge(nodesMapping[node1], nodesMapping[node2], adjacencyList);
+    if (!e.second) {
+        throw NoRouteException();
+    }
+    remove_edge(e.first, adjacencyList);
 
     boost::graph_traits<decltype(adjacencyList)>::adjacency_iterator vi, viEnd;
     boost::tie(vi, viEnd) = adjacent_vertices(nodesMapping[node1], adjacencyList);
     if (vi == viEnd) {
-        remove_vertex(nodesMapping[node1], adjacencyList);
-        nodesReverseMapping.erase(nodesReverseMapping.find(nodesMapping[node1]));
-        nodesMapping.erase(nodesMapping.find(node1));
+        removeNode(node1);
     }
     boost::tie(vi, viEnd) = adjacent_vertices(nodesMapping[node2], adjacencyList);
     if (vi == viEnd) {
-        remove_vertex(nodesMapping[node2], adjacencyList);
-        nodesReverseMapping.erase(nodesReverseMapping.find(nodesMapping[node2]));
-        nodesMapping.erase(nodesMapping.find(node2));
+        removeNode(node2);
     }
+}
+
+void Mapper::removeNode(const Mapper::Node &node) {
+    auto vertexDescriptor = nodesMapping[node];
+    remove_vertex(vertexDescriptor, adjacencyList);
+
+    // invalidate all vertex descriptors
+    for (auto i = vertexDescriptor + 1; i < nodesReverseMapping.size(); ++i) {
+        nodesReverseMapping[i - 1] = nodesReverseMapping[i];
+        nodesMapping[nodesReverseMapping[i - 1]]--;
+    }
+    nodesReverseMapping.pop_back();
+    nodesMapping.erase(nodesMapping.find(node));
 }
 
 Mapper::Node Mapper::nextNode(const Mapper::Node &source, const Mapper::Node &dest) {

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 #include <unordered_map>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -40,7 +41,9 @@ class Mapper {
             boost::no_property, boost::property<boost::edge_weight_t, Cost> > adjacencyList;
         typedef boost::graph_traits<decltype(adjacencyList)>::vertex_descriptor VertexDescriptor;
         std::unordered_map<Node, VertexDescriptor> nodesMapping;
-        std::unordered_map<VertexDescriptor, Node> nodesReverseMapping;
+        std::vector<Node> nodesReverseMapping;
+
+        void removeNode(const Node &node);
 };
 
 #endif // MAPPER_H
