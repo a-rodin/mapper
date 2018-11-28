@@ -16,6 +16,10 @@ class Mapper {
             const char *what() const noexcept { return "Cyclic route"; }
         };
 
+        class RouteAlreadyExistsException: public std::exception {
+            const char *what() const noexcept { return "Route already exists"; }
+        };
+
         class NoRouteException: public std::exception {
             const char *what() const noexcept { return "No route"; }
         };

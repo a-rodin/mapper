@@ -1,9 +1,6 @@
 #include "mapper.h"
-#include <iostream>
 #include <vector>
-#include <limits>
 #include <boost/graph/graph_traits.hpp>
-#include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 
@@ -20,6 +17,10 @@ void Mapper::addRoute(const Mapper::Node &node1, const Mapper::Node &node2, Mapp
         auto vertexDescriptor = add_vertex(adjacencyList);
         nodesMapping[node2] = vertexDescriptor;
         nodesReverseMapping[vertexDescriptor] = node2;
+    }
+
+    if (boost::edge(nodesMapping[node1], nodesMapping[node2], adjacencyList).second) {
+        throw RouteAlreadyExistsException();
     }
 
     add_edge(nodesMapping[node1], nodesMapping[node2], cost, adjacencyList);

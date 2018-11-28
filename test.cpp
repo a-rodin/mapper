@@ -72,6 +72,13 @@ TEST(MapperTest, AddRouteSameNode) {
     ASSERT_THROW(mapper.addRoute("alice", "alice", 1.0), decltype(mapper)::CyclicRouteException);
 }
 
+TEST(MapperTest, AddRouteTwice) {
+    Mapper mapper;
+    mapper.addRoute("alice", "bob", 1.0);
+
+    ASSERT_THROW(mapper.addRoute("alice", "bob", 2.0), decltype(mapper)::RouteAlreadyExistsException);
+}
+
 TEST(MapperTest, RemoveRouteKeepAnotherRoute) {
     Mapper mapper;
     mapper.addRoute("alice", "bob", 1.0);
