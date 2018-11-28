@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(mapper)
 
+set(CMAKE_CXX_STANDARD 11)
+
 # Download and unpack external projects at configure time
 configure_file(CMakeLists.txt.in external-projects-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
