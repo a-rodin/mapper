@@ -67,6 +67,27 @@ TEST(MapperTest, FindRoute2) {
     ASSERT_EQ(mapper.nextNode("alice", "charlie"), "bob");
 }
 
+TEST(MapperTest, FindRoute3) {
+    Mapper mapper;
+    mapper.addRoute("alice", "bob", 2.0);
+    mapper.addRoute("alice", "charlie", 1.0);
+    mapper.addRoute("bob", "david", 1.0);
+    mapper.addRoute("charlie", "david", 2.0);
+
+    ASSERT_TRUE(mapper.nextNode("alice", "david") == "bob" ||
+            mapper.nextNode("alice", "david") == "charlie");
+}
+
+TEST(MapperTest, FindRoute4) {
+    Mapper mapper;
+    mapper.addRoute("alice", "bob", 2.0);
+    mapper.addRoute("alice", "charlie", 1.0);
+    mapper.addRoute("bob", "david", 1.0);
+    mapper.addRoute("charlie", "david", 10.0);
+
+    ASSERT_EQ(mapper.nextNode("alice", "david"), "bob");
+}
+
 TEST(MapperTest, AddRouteSameNode) {
     Mapper mapper;
     ASSERT_THROW(mapper.addRoute("alice", "alice", 1.0), decltype(mapper)::CyclicRouteException);
@@ -128,11 +149,26 @@ TEST(MapperTest, RemoveRouteNoSecondNode) {
     ASSERT_THROW(mapper.removeRoute("alice", "charlie"), decltype(mapper)::NoNodeException);
 }
 
-TEST(MapperTest, RemoveAndAdd) {
+TEST(MapperTest, RemoveRouteAndAdd) {
     Mapper mapper;
     mapper.addRoute("alice", "bob", 1.0);
     mapper.removeRoute("alice", "bob");
     mapper.addRoute("alice", "bob", 2.0);
 
     ASSERT_EQ(mapper.nextNode("alice", "bob"), "bob");
+}
+
+TEST(MapperTest, RemoveRouteMultple) {
+    Mapper mapper;
+    mapper.addRoute("alice", "bob", 1.0);
+    mapper.addRoute("alice", "charlie", 2.0);
+    mapper.addRoute("bob", "charlie", 3.0);
+
+    mapper.removeRoute("alice", "bob");
+    mapper.removeRoute("charlie", "alice");
+    mapper.removeRoute("bob", "charlie");
+
+    ASSERT_THROW(mapper.nextNode("alice", "alice"), decltype(mapper)::NoNodeException);
+    ASSERT_THROW(mapper.nextNode("bob", "bob"), decltype(mapper)::NoNodeException);
+    ASSERT_THROW(mapper.nextNode("charlie", "charlie"), decltype(mapper)::NoNodeException);
 }
